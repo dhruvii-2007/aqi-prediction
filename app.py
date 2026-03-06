@@ -6,7 +6,7 @@ import numpy as np
 import joblib
 import plotly.graph_objects as go
 import plotly.express as px
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 import os
 
 # ============================================
@@ -174,40 +174,28 @@ st.markdown('<h1 class="main-header">🌍 AQI Predictor - India</h1>', unsafe_al
 st.markdown('<p class="sub-header">Predict Air Quality Index for any date, time, and location</p>', unsafe_allow_html=True)
 
 # ============================================
-# SIDEBAR - INPUTS
+# SIDEBAR - INPUTS (SIMPLIFIED)
 # ============================================
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/000000/air-quality.png", width=100)
     st.title("📝 Input Parameters")
     
-    # Date input - FIXED with date objects
-    date_input = st.date_input(
-        "📅 Select Date",
-        value=date.today(),
-        min_value=date(2015, 1, 1),
-        max_value=date(2025, 12, 31)
-    )
+    # SUPER SIMPLE date input - no min/max
+    today = datetime.now().date()
+    date_input = st.date_input("📅 Select Date", today)
     
     # Time input
-    time_input = st.time_input(
-        "⏰ Select Time",
-        value=datetime.now().time()
-    )
+    time_input = st.time_input("⏰ Select Time", datetime.now().time())
     
     # Station selection
     if model is not None and station_encoder is not None:
         stations = list(station_encoder.classes_)
-        station_input = st.selectbox(
-            "🏭 Select Station",
-            stations,
-            index=0
-        )
+        station_input = st.selectbox("🏭 Select Station", stations, index=0)
     else:
         station_input = st.text_input("🏭 Enter Station ID", "Station_101")
     
     # Predict button
     predict_btn = st.button("🔮 Predict AQI", use_container_width=True)
-
 # ============================================
 # MAIN CONTENT
 # ============================================
