@@ -1,4 +1,4 @@
-# app.py - Streamlit AQI Prediction App
+# app.py - CORRECTED VERSION (Models in root)
 
 import streamlit as st
 import pandas as pd
@@ -20,84 +20,38 @@ st.set_page_config(
 )
 
 # ============================================
-# CUSTOM CSS
-# ============================================
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 3rem;
-        color: #1E88E5;
-        text-align: center;
-        margin-bottom: 1rem;
-    }
-    .sub-header {
-        font-size: 1.5rem;
-        color: #0D47A1;
-        margin-bottom: 2rem;
-        text-align: center;
-    }
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 2rem;
-        border-radius: 10px;
-        color: white;
-        text-align: center;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    .aqi-good { color: green; font-weight: bold; }
-    .aqi-satisfactory { color: lightgreen; font-weight: bold; }
-    .aqi-moderate { color: yellow; font-weight: bold; }
-    .aqi-poor { color: orange; font-weight: bold; }
-    .aqi-very-poor { color: red; font-weight: bold; }
-    .aqi-severe { color: darkred; font-weight: bold; }
-    .stButton>button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        font-weight: bold;
-        border: none;
-        padding: 0.5rem 2rem;
-        border-radius: 5px;
-    }
-    .stButton>button:hover {
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# ============================================
-# LOAD MODEL AND ARTIFACTS
+# LOAD MODEL (from root directory)
 # ============================================
 @st.cache_resource
 def load_model():
-    """Load model and artifacts from Google Drive or local"""
+    """Load model and artifacts from root directory"""
     try:
-        # Try loading from Google Drive first
-        model = joblib.load('/content/drive/MyDrive/aqi_model.pkl')
-        feature_cols = joblib.load('/content/drive/MyDrive/aqi_features.pkl')
-        station_encoder = joblib.load('/content/drive/MyDrive/station_encoder.pkl')
-    except:
-        # Fallback to local files
+        # Load directly from current directory (no 'models' folder)
         model = joblib.load('aqi_model.pkl')
         feature_cols = joblib.load('aqi_features.pkl')
         station_encoder = joblib.load('station_encoder.pkl')
-    
-    return model, feature_cols, station_encoder
+        return model, feature_cols, station_encoder
+    except FileNotFoundError as e:
+        st.error(f"❌ Model file not found: {e}")
+        st.info("Please ensure these files are in the same directory as app.py:\n"
+                "- aqi_model.pkl\n"
+                "- aqi_features.pkl\n"
+                "- station_encoder.pkl")
+        return None, None, None
+    except Exception as e:
+        st.error(f"❌ Error loading model: {str(e)}")
+        return None, None, None
 
 # Load model
-try:
-    model, feature_cols, station_encoder = load_model()
-    model_loaded = True
-except Exception as e:
-    model_loaded = False
-    error_msg = str(e)
+model, feature_cols, station_encoder = load_model()
 
 # ============================================
 # PREDICTION FUNCTION
 # ============================================
 def predict_aqi(date_input, time_input, station_id=None):
-    """
-    Predict AQI using date, time, and station
-    """
+    """Predict AQI using date, time, and station"""
+    if model is None:
+        return None
     
     # Parse datetime
     if isinstance(date_input, str):
@@ -182,10 +136,12 @@ def get_aqi_category(aqi):
         return "Severe", "darkred", "Emergency conditions. Everyone should avoid outdoor activities."
 
 # ============================================
-# HEADER SECTION
+# UI HEADER
 # ============================================
-st.markdown('<h1 class="main-header">🌍 AQI Predictor - India</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Predict Air Quality Index for any date, time, and location</p>', unsafe_allow_html=True)
+st.markdown('<h1 style="font-size: 3rem; color: #1E88E5; text-align: center;">🌍 AQI Predictor - India</h1>', 
+            unsafe_allow_html=True)
+st.markdown('<p style="font-size: 1.5rem; color: #0D47A1; text-align: center;">Predict Air Quality Index for any date, time, and location</p>', 
+            unsafe_allow_html=True)
 
 # ============================================
 # SIDEBAR - INPUTS
@@ -209,7 +165,7 @@ with st.sidebar:
     )
     
     # Station selection
-    if model_loaded:
+    if model is not None and station_encoder is not None:
         stations = list(station_encoder.classes_)
         station_input = st.selectbox(
             "🏭 Select Station",
@@ -218,33 +174,19 @@ with st.sidebar:
         )
     else:
         station_input = st.text_input("🏭 Enter Station ID", "Station_101")
-        st.warning("⚠️ Using demo mode - limited stations")
     
     # Predict button
     predict_btn = st.button("🔮 Predict AQI", use_container_width=True)
-    
-    # Information section
-    with st.expander("ℹ️ About"):
-        st.markdown("""
-        **Model Information:**
-        - Algorithm: XGBoost
-        - Training data: 2015-2020
-        - Stations: 109 across India
-        - Accuracy: R² = 0.974
-        
-        **Features used:**
-        - Date & Time
-        - Station location
-        - Historical patterns
-        - Temporal cycles
-        """)
 
 # ============================================
-# MAIN CONTENT AREA
+# MAIN CONTENT
 # ============================================
-if not model_loaded:
-    st.error(f"❌ Model not loaded: {error_msg}")
-    st.info("Please ensure model files are in the correct location.")
+if model is None:
+    st.error("❌ Model files not found!")
+    st.info("Please ensure these files are in the same directory as app.py:\n"
+            "- aqi_model.pkl\n"
+            "- aqi_features.pkl\n"
+            "- station_encoder.pkl")
     st.stop()
 
 if predict_btn:
@@ -252,6 +194,11 @@ if predict_btn:
         try:
             # Make prediction
             aqi = predict_aqi(date_input, time_input.strftime("%H:%M"), station_input)
+            
+            if aqi is None:
+                st.error("Prediction failed")
+                st.stop()
+                
             category, color, advice = get_aqi_category(aqi)
             
             # Display results in columns
@@ -259,26 +206,26 @@ if predict_btn:
             
             with col1:
                 st.markdown(f"""
-                <div class="metric-card">
-                    <h3 style="color: white; margin-bottom: 1rem;">📊 AQI Value</h3>
-                    <h1 style="font-size: 4rem; color: white;">{aqi:.1f}</h1>
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; border-radius: 10px; color: white; text-align: center;">
+                    <h3>📊 AQI Value</h3>
+                    <h1 style="font-size: 4rem;">{aqi:.1f}</h1>
                 </div>
                 """, unsafe_allow_html=True)
             
             with col2:
                 st.markdown(f"""
-                <div class="metric-card" style="background: {color};">
-                    <h3 style="color: white; margin-bottom: 1rem;">📋 Category</h3>
-                    <h2 style="font-size: 2.5rem; color: white;">{category}</h2>
+                <div style="background: {color}; padding: 2rem; border-radius: 10px; color: white; text-align: center;">
+                    <h3>📋 Category</h3>
+                    <h2 style="font-size: 2.5rem;">{category}</h2>
                 </div>
                 """, unsafe_allow_html=True)
             
             with col3:
                 st.markdown(f"""
-                <div class="metric-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                    <h3 style="color: white; margin-bottom: 1rem;">📍 Location</h3>
-                    <h3 style="color: white;">{station_input}</h3>
-                    <p style="color: white;">{date_input} {time_input}</p>
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; border-radius: 10px; color: white; text-align: center;">
+                    <h3>📍 Location</h3>
+                    <h3>{station_input}</h3>
+                    <p>{date_input} {time_input}</p>
                 </div>
                 """, unsafe_allow_html=True)
             
@@ -287,12 +234,12 @@ if predict_btn:
             
             # AQI Gauge Chart
             fig = go.Figure(go.Indicator(
-                mode = "gauge+number",
-                value = aqi,
-                domain = {'x': [0, 1], 'y': [0, 1]},
-                title = {'text': "AQI Level", 'font': {'size': 24}},
-                gauge = {
-                    'axis': {'range': [0, 500], 'tickwidth': 1},
+                mode="gauge+number",
+                value=aqi,
+                domain={'x': [0, 1], 'y': [0, 1]},
+                title={'text': "AQI Level"},
+                gauge={
+                    'axis': {'range': [0, 500]},
                     'bar': {'color': "darkblue"},
                     'steps': [
                         {'range': [0, 50], 'color': "green"},
@@ -301,73 +248,18 @@ if predict_btn:
                         {'range': [200, 300], 'color': "orange"},
                         {'range': [300, 400], 'color': "red"},
                         {'range': [400, 500], 'color': "darkred"}
-                    ],
-                    'threshold': {
-                        'line': {'color': "red", 'width': 4},
-                        'thickness': 0.75,
-                        'value': aqi
-                    }
+                    ]
                 }
             ))
-            
             fig.update_layout(height=400)
             st.plotly_chart(fig, use_container_width=True)
             
-            # Week forecast
-            st.subheader("📈 7-Day AQI Forecast")
-            
-            # Generate predictions for next 7 days at same time
-            forecast_data = []
-            for i in range(7):
-                forecast_date = date_input + timedelta(days=i)
-                forecast_aqi = predict_aqi(forecast_date, time_input.strftime("%H:%M"), station_input)
-                forecast_cat, _, _ = get_aqi_category(forecast_aqi)
-                forecast_data.append({
-                    'Date': forecast_date.strftime("%Y-%m-%d"),
-                    'AQI': round(forecast_aqi, 1),
-                    'Category': forecast_cat
-                })
-            
-            forecast_df = pd.DataFrame(forecast_data)
-            
-            # Create forecast chart
-            fig_forecast = px.line(forecast_df, x='Date', y='AQI', markers=True,
-                                  title="7-Day AQI Forecast",
-                                  labels={'AQI': 'Predicted AQI', 'Date': 'Date'})
-            
-            # Add color zones
-            fig_forecast.add_hrect(y0=0, y1=50, line_width=0, fillcolor="green", opacity=0.2)
-            fig_forecast.add_hrect(y0=50, y1=100, line_width=0, fillcolor="lightgreen", opacity=0.2)
-            fig_forecast.add_hrect(y0=100, y1=200, line_width=0, fillcolor="gold", opacity=0.2)
-            fig_forecast.add_hrect(y0=200, y1=300, line_width=0, fillcolor="orange", opacity=0.2)
-            fig_forecast.add_hrect(y0=300, y1=400, line_width=0, fillcolor="red", opacity=0.2)
-            fig_forecast.add_hrect(y0=400, y1=500, line_width=0, fillcolor="darkred", opacity=0.2)
-            
-            fig_forecast.update_layout(height=400)
-            st.plotly_chart(fig_forecast, use_container_width=True)
-            
-            # Show forecast table
-            st.subheader("📊 Forecast Details")
-            st.dataframe(forecast_df, use_container_width=True)
-            
         except Exception as e:
             st.error(f"❌ Prediction failed: {str(e)}")
-
 else:
-    # Show welcome message
-    st.markdown("""
-    <div style="text-align: center; padding: 4rem;">
-        <h2>👋 Welcome to AQI Predictor!</h2>
-        <p style="font-size: 1.2rem; color: gray;">
-            Enter your parameters in the sidebar and click "Predict AQI" to get started.
-        </p>
-        <img src="https://img.icons8.com/color/96/000000/air-quality.png" style="margin-top: 2rem;">
-    </div>
-    """, unsafe_allow_html=True)
+    st.info("👈 Enter parameters in the sidebar and click 'Predict AQI'")
 
-# ============================================
-# FOOTER
-# ============================================
+# Footer
 st.markdown("---")
 st.markdown(
     "<p style='text-align: center; color: gray;'>Made with ❤️ using Streamlit | Model Accuracy: R² = 0.974</p>",
