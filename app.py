@@ -1,9 +1,9 @@
-# app.py - COMPLETE VERSION with full date freedom
+# app.py - COMPLETE VERSION with pickle loading (fixed numpy compatibility)
 
 import streamlit as st
 import pandas as pd
 import numpy as np
-import joblib
+import pickle  # Changed from joblib to pickle
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import date, datetime, timedelta
@@ -63,16 +63,19 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================
-# LOAD MODEL (from root directory)
+# LOAD MODEL (from root directory) - USING PICKLE
 # ============================================
 @st.cache_resource
 def load_model():
-    """Load model and artifacts from root directory"""
+    """Load model and artifacts from root directory using pickle"""
     try:
-        # Load directly from current directory
-        model = joblib.load('aqi_model.pkl')
-        feature_cols = joblib.load('aqi_features.pkl')
-        station_encoder = joblib.load('station_encoder.pkl')
+        # Load directly from current directory using pickle
+        with open('aqi_model.pkl', 'rb') as f:
+            model = pickle.load(f)
+        with open('aqi_features.pkl', 'rb') as f:
+            feature_cols = pickle.load(f)
+        with open('station_encoder.pkl', 'rb') as f:
+            station_encoder = pickle.load(f)
         return model, feature_cols, station_encoder
     except FileNotFoundError as e:
         st.error(f"❌ Model file not found: {e}")
