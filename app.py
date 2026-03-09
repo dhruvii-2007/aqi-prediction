@@ -24,7 +24,7 @@ station_encoder = joblib.load("station_encoder.pkl")
 
 # dataset for typical pollutant values
 data = pd.read_csv(
-    "https://raw.githubusercontent.com/epicheck/aqi-old/main/station_hour.csv"
+    "station_summary.csv"
 )
 
 # ==============================
