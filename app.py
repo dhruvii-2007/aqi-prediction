@@ -162,26 +162,36 @@ station_encoder = joblib.load("station_encoder.pkl")
 data = pd.read_csv("station_summary.csv")
 
 # ==============================
+# Create District Dropdown
+# ==============================
+
+district_to_code = {v[1]:k for k,v in rto_mapping.items()}
+
+district_list = sorted(list(district_to_code.keys()))
+
+# ==============================
 # Header
 # ==============================
 
 st.title("🌍 Air Quality Index Prediction Dashboard")
-st.markdown("Predict **Air Quality Index (AQI)** using station, time and pollutants")
+st.markdown("Predict **Air Quality Index (AQI)** using location, time and pollutants")
 
 st.divider()
 
 # ==============================
-# Station Input
+# Location Input
 # ==============================
 
 col1,col2,col3,col4 = st.columns(4)
 
-station = col1.selectbox(
-"📍 Station Code",
-station_encoder.classes_
+district = col1.selectbox(
+    "📍 District",
+    district_list
 )
 
-state,district = rto_mapping.get(station,("Unknown","Unknown"))
+station = district_to_code[district]
+
+state = rto_mapping[station][0]
 
 col2.text_input("🏛 State",state,disabled=True)
 col3.text_input("🏙 District",district,disabled=True)
@@ -326,18 +336,17 @@ if predict:
     with col2:
 
         st.info(f"""
-Station Code: {station}
+🏛 State: {state}
 
-State: {state}
+🏙 District: {district}
 
-District: {district}
+📅 Date: {date}
 
-Date: {date}
+⏰ Time: {time}
 
-Time: {time}
-
-Category: **{category}**
+🌫 AQI Category: **{category}**
 """)
 
 st.divider()
+
 st.caption("Machine Learning AQI Prediction System • Built with Streamlit")
