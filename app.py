@@ -15,6 +15,143 @@ st.set_page_config(
 )
 
 # ==============================
+# RTO Mapping
+# ==============================
+
+rto_mapping = {
+
+"AP001":("Andhra Pradesh","Adilabad"),
+"AP005":("Andhra Pradesh","Anantapur"),
+
+"AS001":("Assam","Guwahati"),
+
+"BR005":("Bihar","Darbhanga"),
+"BR006":("Bihar","Muzaffarpur"),
+"BR007":("Bihar","Gaya"),
+"BR008":("Bihar","Motihari"),
+"BR009":("Bihar","Chapra"),
+"BR010":("Bihar","Bettiah"),
+
+"CH001":("Chandigarh","Chandigarh"),
+
+"DL001":("Delhi","Mall Road"),
+"DL002":("Delhi","Tilak Marg"),
+"DL003":("Delhi","Sheikh Sarai"),
+"DL004":("Delhi","Janakpuri"),
+"DL005":("Delhi","Loni Road"),
+"DL006":("Delhi","Sarai Kale Khan"),
+"DL007":("Delhi","Mayur Vihar"),
+"DL008":("Delhi","Wazirpur"),
+"DL009":("Delhi","Rohini"),
+"DL010":("Delhi","West Delhi"),
+"DL012":("Delhi","Vasant Vihar"),
+"DL013":("Delhi","Surajmal Vihar"),
+"DL014":("Delhi","Sonipat"),
+"DL015":("Delhi","Gurgaon"),
+"DL016":("Delhi","Faridabad"),
+"DL017":("Delhi","Noida"),
+"DL018":("Delhi","Ghaziabad"),
+"DL019":("Delhi","Chittaranjan Park"),
+"DL020":("Delhi","Dwarka"),
+"DL021":("Delhi","North West Delhi"),
+"DL022":("Delhi","Rohini"),
+"DL023":("Delhi","South West Delhi"),
+"DL024":("Delhi","West Delhi"),
+"DL025":("Delhi","Najafgarh"),
+"DL026":("Delhi","Dwarka"),
+"DL027":("Delhi","Najafgarh"),
+"DL028":("Delhi","Punjabi Bagh"),
+"DL029":("Delhi","Kapashera"),
+"DL030":("Delhi","Vasant Vihar"),
+"DL031":("Delhi","Sarita Vihar"),
+"DL032":("Delhi","Rohini"),
+"DL033":("Delhi","Janakpuri"),
+"DL034":("Delhi","Nand Nagri"),
+"DL035":("Delhi","Wazirpur"),
+"DL036":("Delhi","Dwarka"),
+"DL037":("Delhi","Rohini"),
+"DL038":("Delhi","West Delhi"),
+
+"GJ001":("Gujarat","Ahmedabad"),
+
+"HR011":("Haryana","Narnaul"),
+"HR012":("Haryana","Bahadurgarh"),
+"HR013":("Haryana","Faridabad"),
+"HR014":("Haryana","Sonipat"),
+
+"JH001":("Jharkhand","Ranchi"),
+
+"KA002":("Karnataka","Bangalore West"),
+"KA003":("Karnataka","Bangalore East"),
+"KA004":("Karnataka","Bangalore North"),
+"KA005":("Karnataka","Bangalore South"),
+"KA006":("Karnataka","Tumkur"),
+"KA007":("Karnataka","Kolar"),
+"KA008":("Karnataka","KGF"),
+"KA009":("Karnataka","Mysore"),
+"KA010":("Karnataka","Chamrajnagar"),
+"KA011":("Karnataka","Mandya"),
+
+"KL002":("Kerala","Kollam"),
+"KL004":("Kerala","Alappuzha"),
+"KL007":("Kerala","Palakkad"),
+"KL008":("Kerala","Malappuram"),
+
+"MH005":("Maharashtra","Kalyan"),
+"MH006":("Maharashtra","Raigad"),
+"MH007":("Maharashtra","Sindhudurg"),
+"MH008":("Maharashtra","Ratnagiri"),
+"MH009":("Maharashtra","Kolhapur"),
+"MH010":("Maharashtra","Sangli"),
+"MH011":("Maharashtra","Satara"),
+"MH012":("Maharashtra","Pune"),
+"MH013":("Maharashtra","Solapur"),
+"MH014":("Maharashtra","Pimpri-Chinchwad"),
+
+"ML001":("Meghalaya","Shillong"),
+
+"MP001":("Madhya Pradesh","Bhopal"),
+
+"MZ001":("Mizoram","Aizawl"),
+
+"OD001":("Odisha","Balasore"),
+"OD002":("Odisha","Bhubaneswar"),
+
+"PB001":("Punjab","Chandigarh"),
+
+"RJ004":("Rajasthan","Jaipur"),
+"RJ005":("Rajasthan","Ajmer"),
+"RJ006":("Rajasthan","Alwar"),
+
+"TG001":("Telangana","Adilabad"),
+"TG002":("Telangana","Karimnagar"),
+"TG003":("Telangana","Warangal"),
+"TG004":("Telangana","Khammam"),
+"TG005":("Telangana","Nalgonda"),
+"TG006":("Telangana","Mahbubnagar"),
+
+"TN001":("Tamil Nadu","Chennai Central"),
+"TN002":("Tamil Nadu","Chennai North"),
+"TN003":("Tamil Nadu","Chennai East"),
+"TN004":("Tamil Nadu","Chennai South"),
+"TN005":("Tamil Nadu","Chennai West"),
+
+"UP012":("Uttar Pradesh","Ghaziabad"),
+"UP013":("Uttar Pradesh","Bulandshahr"),
+"UP014":("Uttar Pradesh","Ghaziabad"),
+"UP015":("Uttar Pradesh","Meerut"),
+"UP016":("Uttar Pradesh","Noida"),
+
+"WB007":("West Bengal","Howrah"),
+"WB008":("West Bengal","Hooghly"),
+"WB009":("West Bengal","North 24 Parganas"),
+"WB010":("West Bengal","South 24 Parganas"),
+"WB011":("West Bengal","Bankura"),
+"WB012":("West Bengal","Purulia"),
+"WB013":("West Bengal","East Midnapore"),
+}
+
+# ==============================
 # Load Model Files
 # ==============================
 
@@ -22,10 +159,7 @@ model = joblib.load("aqi_time_model.pkl")
 features = joblib.load("aqi_features.pkl")
 station_encoder = joblib.load("station_encoder.pkl")
 
-# dataset for typical pollutant values
-data = pd.read_csv(
-    "station_summary.csv"
-)
+data = pd.read_csv("station_summary.csv")
 
 # ==============================
 # Header
@@ -37,19 +171,24 @@ st.markdown("Predict **Air Quality Index (AQI)** using station, time and polluta
 st.divider()
 
 # ==============================
-# Input Section
+# Station Input
 # ==============================
 
-col1, col2, col3 = st.columns(3)
+col1,col2,col3,col4 = st.columns(4)
 
 station = col1.selectbox(
-    "📍 Station",
-    station_encoder.classes_
+"📍 Station Code",
+station_encoder.classes_
 )
 
-date = col2.date_input("📅 Date")
+state,district = rto_mapping.get(station,("Unknown","Unknown"))
 
-time = col3.time_input("⏰ Time")
+col2.text_input("🏛 State",state,disabled=True)
+col3.text_input("🏙 District",district,disabled=True)
+
+date = col4.date_input("📅 Date")
+
+time = st.time_input("⏰ Time")
 
 # ==============================
 # Optional Pollutants
@@ -105,10 +244,6 @@ def create_features():
     is_peak = 1 if hour in [7,8,9,17,18,19] else 0
     time_block = 0 if hour<6 else 1 if hour<12 else 2 if hour<18 else 3
 
-    # ==============================
-    # Typical pollutant values
-    # ==============================
-
     station_data = data[data["StationId"] == station]
 
     pm25_val = pm25 if pm25>0 else station_data["PM2.5"].median()
@@ -123,55 +258,31 @@ def create_features():
     pm25_pm10_ratio = pm25_val/(pm10_val+0.01)
     nox_no2_ratio = nox_val/(no2_val+0.01)
 
-    data_dict = {
-
+    df = pd.DataFrame([{
         'Station_encoded':station_encoded,
-
-        'year':year,
-        'month':month,
-        'day':day,
-        'hour':hour,
-
-        'dayofweek':dayofweek,
-        'week':week,
-        'quarter':quarter,
-        'dayofyear':dayofyear,
-
-        'weekend':weekend,
-
-        'hour_sin':hour_sin,
-        'hour_cos':hour_cos,
-
-        'month_sin':month_sin,
-        'month_cos':month_cos,
-
-        'day_sin':day_sin,
-        'day_cos':day_cos,
-
-        'is_peak':is_peak,
-        'time_block':time_block,
-
+        'year':year,'month':month,'day':day,'hour':hour,
+        'dayofweek':dayofweek,'week':week,'quarter':quarter,
+        'dayofyear':dayofyear,'weekend':weekend,
+        'hour_sin':hour_sin,'hour_cos':hour_cos,
+        'month_sin':month_sin,'month_cos':month_cos,
+        'day_sin':day_sin,'day_cos':day_cos,
+        'is_peak':is_peak,'time_block':time_block,
         'pm25_pm10_ratio':pm25_pm10_ratio,
         'nox_no2_ratio':nox_no2_ratio,
-
         'PM2.5_typical':pm25_val,
         'PM10_typical':pm10_val,
         'NO2_typical':no2_val,
         'SO2_typical':so2_val,
         'O3_typical':o3_val,
-
         'aqi_rolling_6h':aqi_typical,
         'aqi_rolling_24h':aqi_typical,
         'aqi_rolling_168h':aqi_typical,
-
         'AQI_typical':aqi_typical
-    }
-
-    df = pd.DataFrame([data_dict])
+    }])
 
     for col in features:
         if col not in df.columns:
-            df[col] = 0
+            df[col]=0
 
     return df[features]
 
@@ -181,18 +292,12 @@ def create_features():
 
 def get_category(aqi):
 
-    if aqi<=50:
-        return "Good","🟢"
-    elif aqi<=100:
-        return "Satisfactory","🟡"
-    elif aqi<=200:
-        return "Moderate","🟠"
-    elif aqi<=300:
-        return "Poor","🔴"
-    elif aqi<=400:
-        return "Very Poor","🟣"
-    else:
-        return "Severe","⚫"
+    if aqi<=50: return "Good","🟢"
+    elif aqi<=100: return "Satisfactory","🟡"
+    elif aqi<=200: return "Moderate","🟠"
+    elif aqi<=300: return "Poor","🔴"
+    elif aqi<=400: return "Very Poor","🟣"
+    else: return "Severe","⚫"
 
 # ==============================
 # Prediction
@@ -221,7 +326,11 @@ if predict:
     with col2:
 
         st.info(f"""
-Station: {station}
+Station Code: {station}
+
+State: {state}
+
+District: {district}
 
 Date: {date}
 
@@ -231,5 +340,4 @@ Category: **{category}**
 """)
 
 st.divider()
-
 st.caption("Machine Learning AQI Prediction System • Built with Streamlit")
