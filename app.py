@@ -152,6 +152,23 @@ rto_mapping = {
 }
 
 # ==============================
+# Build State → District Mapping
+# ==============================
+
+state_district = {}
+district_to_code = {}
+
+for code,(state,district) in rto_mapping.items():
+
+    if state not in state_district:
+        state_district[state] = []
+
+    state_district[state].append(district)
+    district_to_code[district] = code
+
+states = sorted(state_district.keys())
+
+# ==============================
 # Load Model Files
 # ==============================
 
@@ -160,14 +177,6 @@ features = joblib.load("aqi_features.pkl")
 station_encoder = joblib.load("station_encoder.pkl")
 
 data = pd.read_csv("station_summary.csv")
-
-# ==============================
-# Create District Dropdown
-# ==============================
-
-district_to_code = {v[1]:k for k,v in rto_mapping.items()}
-
-district_list = sorted(list(district_to_code.keys()))
 
 # ==============================
 # Header
@@ -179,29 +188,24 @@ st.markdown("Predict **Air Quality Index (AQI)** using location, time and pollut
 st.divider()
 
 # ==============================
-# Location Input
+# Location Inputs
 # ==============================
 
 col1,col2,col3,col4 = st.columns(4)
 
-district = col1.selectbox(
-    "📍 District",
-    district_list
-)
+state = col1.selectbox("🏛 State",states)
+
+districts = sorted(state_district[state])
+
+district = col2.selectbox("🏙 District",districts)
 
 station = district_to_code[district]
 
-state = rto_mapping[station][0]
-
-col2.text_input("🏛 State",state,disabled=True)
-col3.text_input("🏙 District",district,disabled=True)
-
-date = col4.date_input("📅 Date")
-
-time = st.time_input("⏰ Time")
+date = col3.date_input("📅 Date")
+time = col4.time_input("⏰ Time")
 
 # ==============================
-# Optional Pollutants
+# Pollutants
 # ==============================
 
 with st.expander("⚙️ Advanced Pollutant Inputs (Optional)"):
@@ -233,61 +237,26 @@ def create_features():
     day = dt.day
     hour = dt.hour
 
-    dayofweek = dt.weekday()
-    week = dt.isocalendar()[1]
-    quarter = (month-1)//3 + 1
-    dayofyear = dt.timetuple().tm_yday
-
-    weekend = 1 if dayofweek >=5 else 0
-
-    hour_sin = np.sin(2*np.pi*hour/24)
-    hour_cos = np.cos(2*np.pi*hour/24)
-
-    month_sin = np.sin(2*np.pi*month/12)
-    month_cos = np.cos(2*np.pi*month/12)
-
-    day_sin = np.sin(2*np.pi*dayofyear/365)
-    day_cos = np.cos(2*np.pi*dayofyear/365)
-
     station_encoded = station_encoder.transform([station])[0]
-
-    is_peak = 1 if hour in [7,8,9,17,18,19] else 0
-    time_block = 0 if hour<6 else 1 if hour<12 else 2 if hour<18 else 3
 
     station_data = data[data["StationId"] == station]
 
     pm25_val = pm25 if pm25>0 else station_data["PM2.5"].median()
     pm10_val = pm10 if pm10>0 else station_data["PM10"].median()
     no2_val = no2 if no2>0 else station_data["NO2"].median()
-    so2_val = so2 if so2>0 else station_data["SO2"].median()
-    o3_val = o3 if o3>0 else station_data["O3"].median()
-    nox_val = nox if nox>0 else station_data["NOx"].median()
 
     aqi_typical = station_data["AQI"].median()
 
-    pm25_pm10_ratio = pm25_val/(pm10_val+0.01)
-    nox_no2_ratio = nox_val/(no2_val+0.01)
-
     df = pd.DataFrame([{
-        'Station_encoded':station_encoded,
-        'year':year,'month':month,'day':day,'hour':hour,
-        'dayofweek':dayofweek,'week':week,'quarter':quarter,
-        'dayofyear':dayofyear,'weekend':weekend,
-        'hour_sin':hour_sin,'hour_cos':hour_cos,
-        'month_sin':month_sin,'month_cos':month_cos,
-        'day_sin':day_sin,'day_cos':day_cos,
-        'is_peak':is_peak,'time_block':time_block,
-        'pm25_pm10_ratio':pm25_pm10_ratio,
-        'nox_no2_ratio':nox_no2_ratio,
-        'PM2.5_typical':pm25_val,
-        'PM10_typical':pm10_val,
-        'NO2_typical':no2_val,
-        'SO2_typical':so2_val,
-        'O3_typical':o3_val,
-        'aqi_rolling_6h':aqi_typical,
-        'aqi_rolling_24h':aqi_typical,
-        'aqi_rolling_168h':aqi_typical,
-        'AQI_typical':aqi_typical
+        "Station_encoded":station_encoded,
+        "year":year,
+        "month":month,
+        "day":day,
+        "hour":hour,
+        "PM2.5_typical":pm25_val,
+        "PM10_typical":pm10_val,
+        "NO2_typical":no2_val,
+        "AQI_typical":aqi_typical
     }])
 
     for col in features:
