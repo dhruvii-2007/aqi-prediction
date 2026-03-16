@@ -5,7 +5,6 @@ import joblib
 import requests
 import os
 from datetime import datetime
-from streamlit_timepicker import st_timepicker
 
 # ------------------------------------------------
 # PAGE CONFIG
@@ -84,8 +83,8 @@ with col2:
     date = st.date_input("📅 Date")
 
 with col3:
-    time_input = st_timepicker("⏰ Time", value="12:00")
-    hour = int(time_input.split(":")[0])
+    time_input = st.time_input("⏰ Time")
+    hour = time_input.hour
 
 year = date.year
 month = date.month
