@@ -23,7 +23,6 @@ st.set_page_config(
 API_KEY = "YOUR_API_KEY"
 
 model = joblib.load("aqi_xgboost_model.pkl")
-
 city_encoder = joblib.load("city_encoder.pkl")
 
 cities = sorted(list(city_encoder.classes_))
@@ -93,26 +92,30 @@ dayofweek = date.weekday()
 actual_aqi = get_current_aqi(city)
 
 # ------------------------------------------------
-# UPDATE HISTORY
+# UPDATE HISTORY (NO DUPLICATES)
 # ------------------------------------------------
 
 if actual_aqi is not None:
 
-    new_row = {
-        "City":city,
-        "Datetime":datetime.now(),
-        "AQI":actual_aqi
-    }
+    now = datetime.now()
 
-    df_hist = pd.concat([df_hist,pd.DataFrame([new_row])])
+    if len(df_hist) == 0 or df_hist.iloc[-1]["AQI"] != actual_aqi:
 
-    df_hist.to_csv("aqi_history.csv",index=False)
+        new_row = {
+            "City": city,
+            "Datetime": now,
+            "AQI": actual_aqi
+        }
+
+        df_hist = pd.concat([df_hist, pd.DataFrame([new_row])])
+
+        df_hist.to_csv("aqi_history.csv", index=False)
 
 # ------------------------------------------------
 # BUILD LAG FEATURES
 # ------------------------------------------------
 
-city_hist = df_hist[df_hist["City"]==city]
+city_hist = df_hist[df_hist["City"] == city]
 
 if len(city_hist) > 24:
 
@@ -122,9 +125,11 @@ if len(city_hist) > 24:
 
 else:
 
-    AQI_lag_1 = actual_aqi
-    AQI_lag_24 = actual_aqi
-    AQI_roll_24 = actual_aqi
+    fallback = actual_aqi if actual_aqi is not None else 150
+
+    AQI_lag_1 = fallback
+    AQI_lag_24 = fallback
+    AQI_roll_24 = fallback
 
 # ------------------------------------------------
 # CYCLICAL FEATURES
@@ -179,7 +184,9 @@ if predict_btn:
 
     prediction = model.predict(features)[0]
 
+    # ------------------------------------------------
     # AQI CATEGORY
+    # ------------------------------------------------
 
     if prediction <= 50:
         category = "Good"
@@ -194,11 +201,13 @@ if predict_btn:
     else:
         category = "Severe"
 
-    progress_value = min(prediction/500,1)
+    progress_value = float(min(prediction / 500, 1))
 
     col_left, col_right = st.columns([2,1])
 
-    # LEFT SIDE RESULT
+    # ------------------------------------------------
+    # RESULT DISPLAY
+    # ------------------------------------------------
 
     with col_left:
 
@@ -211,8 +220,6 @@ if predict_btn:
         st.progress(progress_value)
 
         st.metric("Current AQI (Live)", actual_aqi)
-
-    # RIGHT SIDE SUMMARY CARD
 
     with col_right:
 
