@@ -6,27 +6,40 @@ import requests
 import os
 from datetime import datetime
 
-# -----------------------------
+# ------------------------------------------------
+# PAGE CONFIG
+# ------------------------------------------------
+
+st.set_page_config(
+    page_title="Air Quality Index Prediction Dashboard",
+    page_icon="🌍",
+    layout="wide"
+)
+
+# ------------------------------------------------
 # CONFIG
-# -----------------------------
+# ------------------------------------------------
 
-API_KEY = "06f7899efea26f9023918642e26799c5969ea9c6"
+API_KEY = "YOUR_API_KEY"
 
-# load model
 model = joblib.load("aqi_xgboost_model.pkl")
 
-# -----------------------------
+city_encoder = joblib.load("city_encoder.pkl")
+
+cities = sorted(list(city_encoder.classes_))
+
+# ------------------------------------------------
 # LOAD HISTORY
-# -----------------------------
+# ------------------------------------------------
 
 if os.path.exists("aqi_history.csv"):
     df_hist = pd.read_csv("aqi_history.csv")
 else:
     df_hist = pd.DataFrame(columns=["City","Datetime","AQI"])
 
-# -----------------------------
+# ------------------------------------------------
 # AQI API FUNCTION
-# -----------------------------
+# ------------------------------------------------
 
 def get_current_aqi(city):
 
@@ -44,45 +57,44 @@ def get_current_aqi(city):
     except:
         return None
 
-# -----------------------------
-# UI
-# -----------------------------
+# ------------------------------------------------
+# HEADER
+# ------------------------------------------------
 
-st.title("🌫 AI AQI Prediction")
+st.title("🌍 Air Quality Index Prediction Dashboard")
+st.caption("Predict AQI using AI with real-time air pollution data")
 
-st.write("Predict air quality using AI + real-time data")
+st.divider()
 
-cities = [
-"delhi",
-"ahmedabad",
-"mumbai",
-"bangalore",
-"kolkata",
-"chennai",
-"hyderabad",
-"pune"
-]
+# ------------------------------------------------
+# INPUT SECTION
+# ------------------------------------------------
 
-city = st.selectbox("Select City", cities)
+col1, col2, col3 = st.columns(3)
 
-date = st.date_input("Select Date")
+with col1:
+    city = st.selectbox("📍 City", cities)
 
-hour = st.slider("Hour",0,23,12)
+with col2:
+    date = st.date_input("📅 Date")
+
+with col3:
+    hour = st.slider("⏰ Hour",0,23,12)
 
 year = date.year
 month = date.month
 day = date.day
 dayofweek = date.weekday()
 
-# -----------------------------
+# ------------------------------------------------
 # FETCH REAL AQI
-# -----------------------------
+# ------------------------------------------------
 
 actual_aqi = get_current_aqi(city)
 
-# -----------------------------
+# ------------------------------------------------
 # UPDATE HISTORY
-# -----------------------------
+# ------------------------------------------------
 
 if actual_aqi is not None:
 
@@ -96,9 +108,9 @@ if actual_aqi is not None:
 
     df_hist.to_csv("aqi_history.csv",index=False)
 
-# -----------------------------
+# ------------------------------------------------
 # BUILD LAG FEATURES
-# -----------------------------
+# ------------------------------------------------
 
 city_hist = df_hist[df_hist["City"]==city]
 
@@ -114,9 +126,9 @@ else:
     AQI_lag_24 = actual_aqi
     AQI_roll_24 = actual_aqi
 
-# -----------------------------
+# ------------------------------------------------
 # CYCLICAL FEATURES
-# -----------------------------
+# ------------------------------------------------
 
 hour_sin = np.sin(2*np.pi*hour/24)
 hour_cos = np.cos(2*np.pi*hour/24)
@@ -127,15 +139,24 @@ month_cos = np.cos(2*np.pi*month/12)
 dow_sin = np.sin(2*np.pi*dayofweek/7)
 dow_cos = np.cos(2*np.pi*dayofweek/7)
 
-# placeholder encodings (example)
+# ------------------------------------------------
+# ENCODING
+# ------------------------------------------------
+
+city_enc = city_encoder.transform([city])[0]
 state_enc = 0
-city_enc = cities.index(city)
 
-# -----------------------------
+# ------------------------------------------------
 # PREDICT BUTTON
-# -----------------------------
+# ------------------------------------------------
 
-if st.button("Predict AQI"):
+predict_btn = st.button("🚀 Predict AQI")
+
+# ------------------------------------------------
+# PREDICTION
+# ------------------------------------------------
+
+if predict_btn:
 
     features = [[
         state_enc,
@@ -158,34 +179,65 @@ if st.button("Predict AQI"):
 
     prediction = model.predict(features)[0]
 
-    st.subheader("Results")
-
-    st.metric("Predicted AQI",round(prediction,2))
-    st.metric("Current AQI",actual_aqi)
-
-# -----------------------------
-# AQI CATEGORY
-# -----------------------------
+    # AQI CATEGORY
 
     if prediction <= 50:
-        cat = "Good"
+        category = "Good"
     elif prediction <= 100:
-        cat = "Satisfactory"
+        category = "Satisfactory"
     elif prediction <= 200:
-        cat = "Moderate"
+        category = "Moderate"
     elif prediction <= 300:
-        cat = "Poor"
+        category = "Poor"
     elif prediction <= 400:
-        cat = "Very Poor"
+        category = "Very Poor"
     else:
-        cat = "Severe"
+        category = "Severe"
 
-    st.write("Category:",cat)
+    progress_value = min(prediction/500,1)
 
-# -----------------------------
-# SHOW HISTORY
-# -----------------------------
+    col_left, col_right = st.columns([2,1])
 
-st.subheader("Recent AQI Data")
+    # LEFT SIDE RESULT
+
+    with col_left:
+
+        st.subheader("Predicted AQI")
+
+        st.markdown(f"# {prediction:.2f}")
+
+        st.markdown(f"### 🔴 {category}")
+
+        st.progress(progress_value)
+
+        st.metric("Current AQI (Live)", actual_aqi)
+
+    # RIGHT SIDE SUMMARY CARD
+
+    with col_right:
+
+        st.info(
+f"""
+**City:** {city}
+
+**Date:** {date}
+
+**Hour:** {hour}:00
+
+**Predicted AQI:** {round(prediction,2)}
+
+**Current AQI:** {actual_aqi}
+
+**Category:** {category}
+"""
+        )
+
+# ------------------------------------------------
+# HISTORY TABLE
+# ------------------------------------------------
+
+st.divider()
+
+st.subheader("Recent AQI History")
 
 st.dataframe(df_hist.tail(10))
