@@ -239,7 +239,7 @@ if predict:
 
     category, emoji = aqi_category(prediction)
 
-    progress_value = int(min(prediction, 500))
+    progress_value = int(min(prediction / 500 * 100, 100))
 
     # ------------------------------------------------
     # RESULTS UI
