@@ -1,3 +1,4 @@
+```python
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -14,6 +15,67 @@ st.set_page_config(
     page_icon="🌍",
     layout="wide"
 )
+
+# ------------------------------------------------
+# PROFESSIONAL UI STYLE
+# ------------------------------------------------
+
+st.markdown("""
+<style>
+
+.block-container{
+    padding-top:2rem;
+    padding-bottom:2rem;
+    max-width:1200px;
+}
+
+/* Card UI */
+.card{
+    background:#111;
+    padding:20px;
+    border-radius:14px;
+    border:1px solid #2a2a2a;
+    box-shadow:0px 4px 12px rgba(0,0,0,0.4);
+}
+
+/* Inputs */
+div[data-baseweb="select"]{
+    border-radius:10px;
+}
+
+.stDateInput input{
+    border-radius:10px;
+}
+
+.stTimeInput input{
+    border-radius:10px;
+}
+
+/* Button styling */
+.stButton>button{
+    width:100%;
+    height:48px;
+    border-radius:10px;
+    font-weight:600;
+    font-size:16px;
+}
+
+/* AQI number */
+.big-font{
+    font-size:90px;
+    font-weight:700;
+}
+
+/* Summary box */
+.summary-box{
+    background:#111;
+    padding:20px;
+    border-radius:12px;
+    border:1px solid #333;
+}
+
+</style>
+""", unsafe_allow_html=True)
 
 # ------------------------------------------------
 # CONFIG
@@ -52,7 +114,7 @@ def get_current_aqi(city):
 # ------------------------------------------------
 
 st.title("🌍 Air Quality Prediction Dashboard")
-st.caption("AI powered Air Quality forecasting")
+st.caption("AI Powered Air Quality Forecasting")
 
 st.divider()
 
@@ -60,22 +122,41 @@ st.divider()
 # INPUT SECTION
 # ------------------------------------------------
 
-col1, col2, col3 = st.columns(3)
+st.subheader("Prediction Inputs")
 
-with col1:
-    city = st.selectbox("City", cities)
+container = st.container()
 
-with col2:
-    date = st.date_input("Date")
+with container:
 
-with col3:
-    time = st.time_input("Time")
-    hour = time.hour
+    col1, col2, col3 = st.columns(3)
 
+    with col1:
+        city = st.selectbox(
+            "City",
+            cities,
+            help="Choose city for AQI prediction"
+        )
 
-# 🔽 ADD SPACE SO DROPDOWN OPENS DOWNWARD
-st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
+    with col2:
+        date = st.date_input(
+            "Date",
+            datetime.today()
+        )
 
+    with col3:
+        time = st.time_input(
+            "Time",
+            datetime.now().time()
+        )
+        hour = time.hour
+
+st.write("")
+
+predict = st.button("🚀 Predict AQI")
+
+# ------------------------------------------------
+# DATE FEATURES
+# ------------------------------------------------
 
 year = date.year
 month = date.month
@@ -88,12 +169,6 @@ dayofweek = date.weekday()
 
 city_enc = city_encoder.transform([city])[0]
 state_enc = 0
-
-# ------------------------------------------------
-# PREDICT BUTTON
-# ------------------------------------------------
-
-predict = st.button("🚀 Predict AQI")
 
 # ------------------------------------------------
 # AQI CATEGORY FUNCTION
@@ -113,7 +188,6 @@ def aqi_category(aqi):
         return "Very Poor", "🟣"
     else:
         return "Severe", "⚫"
-
 
 # ------------------------------------------------
 # PREDICTION
@@ -168,6 +242,10 @@ if predict:
 
     progress_value = int(min(prediction, 500))
 
+    # ------------------------------------------------
+    # RESULTS UI
+    # ------------------------------------------------
+
     colA, colB = st.columns([2,1])
 
     with colA:
@@ -175,7 +253,7 @@ if predict:
         st.markdown("### Predicted AQI")
 
         st.markdown(
-            f"<h1 style='font-size:90px'>{round(prediction)}</h1>",
+            f"<div class='big-font'>{round(prediction)}</div>",
             unsafe_allow_html=True
         )
 
@@ -187,16 +265,24 @@ if predict:
 
         st.markdown("### Prediction Summary")
 
-        st.info(f"""
+        st.markdown(
+            f"""
+<div class="summary-box">
+
 City: **{city}**
 
 Date: **{date}**
 
 Time: **{time}**
 
-Predicted AQI: **{round(prediction)}**
-
 Current AQI: **{actual_aqi}**
 
+Predicted AQI: **{round(prediction)}**
+
 Category: **{category}**
-""")
+
+</div>
+""",
+            unsafe_allow_html=True
+        )
+```
