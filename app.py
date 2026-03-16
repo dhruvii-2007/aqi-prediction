@@ -143,11 +143,13 @@ with container:
         )
 
     with col3:
-        time = st.time_input(
-            "Time",
-            datetime.now().time()
-        )
-        hour = time.hour
+    hour = st.number_input(
+        "Hour (0–23)",
+        min_value=0,
+        max_value=23,
+        value=12,
+        step=1
+    )
 
 st.write("")
 
@@ -272,7 +274,7 @@ City: **{city}**
 
 Date: **{date}**
 
-Time: **{time}**
+Hour: **{hour}:00**
 
 Current AQI: **{actual_aqi}**
 
