@@ -1,9 +1,7 @@
 import streamlit as st
-import pandas as pd
 import numpy as np
 import joblib
 import requests
-from datetime import datetime
 
 # ------------------------------------------------
 # PAGE CONFIG
@@ -60,17 +58,22 @@ st.divider()
 # INPUT SECTION
 # ------------------------------------------------
 
-col1, col2, col3 = st.columns(3)
+with st.container():
 
-with col1:
-    city = st.selectbox("City", cities)
+    col1, col2, col3 = st.columns(3)
 
-with col2:
-    date = st.date_input("Date")
+    with col1:
+        city = st.selectbox("City", cities)
 
-with col3:
-    time = st.time_input("Time")
-    hour = time.hour
+    with col2:
+        date = st.date_input("Date")
+
+    with col3:
+        time = st.time_input("Time")
+        hour = time.hour
+
+# spacing so dropdown opens downward
+st.markdown("<br><br>", unsafe_allow_html=True)
 
 year = date.year
 month = date.month
@@ -88,10 +91,10 @@ state_enc = 0
 # PREDICT BUTTON
 # ------------------------------------------------
 
-predict = st.button("🚀 Predict AQI")
+predict = st.button("🚀 Predict AQI", use_container_width=True)
 
 # ------------------------------------------------
-# AQI CATEGORY FUNCTION
+# AQI CATEGORY
 # ------------------------------------------------
 
 def aqi_category(aqi):
@@ -116,10 +119,6 @@ def aqi_category(aqi):
 
 if predict:
 
-    # ---------------------------------------------
-    # Fetch live AQI only when predicting
-    # ---------------------------------------------
-
     city_api = city.lower().replace(" ", "-")
 
     with st.spinner("Fetching live AQI..."):
@@ -130,7 +129,7 @@ if predict:
         st.warning("Live AQI unavailable. Using fallback value.")
 
     # ------------------------------------------------
-    # BUILD LAG FEATURES
+    # LAG FEATURES
     # ------------------------------------------------
 
     AQI_lag_1 = actual_aqi
@@ -181,16 +180,16 @@ if predict:
 
     colA, colB = st.columns([2,1])
 
-    # -------------------------------
+    # ------------------------------------------------
     # MAIN AQI PANEL
-    # -------------------------------
+    # ------------------------------------------------
 
     with colA:
 
         st.markdown("### Predicted AQI")
 
         st.markdown(
-            f"<h1 style='font-size:90px'>{round(prediction)}</h1>",
+            f"<h1 style='font-size:100px'>{round(prediction)}</h1>",
             unsafe_allow_html=True
         )
 
@@ -198,9 +197,9 @@ if predict:
 
         st.progress(progress_value)
 
-    # -------------------------------
+    # ------------------------------------------------
     # SUMMARY CARD
-    # -------------------------------
+    # ------------------------------------------------
 
     with colB:
 
