@@ -10,7 +10,7 @@ from datetime import datetime
 # CONFIG
 # -----------------------------
 
-API_KEY = "YOUR_AQICN_API_KEY"
+API_KEY = "06f7899efea26f9023918642e26799c5969ea9c6"
 
 # load model
 model = joblib.load("aqi_xgb_model.pkl")
