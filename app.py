@@ -5,6 +5,7 @@ import joblib
 import requests
 import os
 from datetime import datetime
+from streamlit_elements import elements, mui
 
 # ------------------------------------------------
 # PAGE CONFIG
@@ -37,7 +38,7 @@ else:
     df_hist = pd.DataFrame(columns=["City","Datetime","AQI"])
 
 # ------------------------------------------------
-# AQI API FUNCTION
+# AQI API
 # ------------------------------------------------
 
 def get_current_aqi(city):
@@ -46,10 +47,6 @@ def get_current_aqi(city):
 
     try:
         r = requests.get(url, timeout=10)
-
-        if r.status_code != 200:
-            return None
-
         data = r.json()
 
         if data.get("status") == "ok":
@@ -66,12 +63,12 @@ def get_current_aqi(city):
 # ------------------------------------------------
 
 st.title("🌍 Air Quality Index Prediction Dashboard")
-st.caption("Predict AQI using AI with real-time air pollution data")
+st.caption("Predict AQI using AI with real-time pollution data")
 
 st.divider()
 
 # ------------------------------------------------
-# INPUT SECTION
+# INPUTS
 # ------------------------------------------------
 
 col1, col2, col3 = st.columns(3)
@@ -82,9 +79,33 @@ with col1:
 with col2:
     date = st.date_input("📅 Date")
 
+# ------------------------------------------------
+# CIRCULAR CLOCK PICKER
+# ------------------------------------------------
+
+hour = 12
+
 with col3:
-    time_input = st.time_input("⏰ Time")
-    hour = time_input.hour
+
+    st.write("⏰ Select Time")
+
+    with elements("clock"):
+
+        mui.LocalizationProvider(
+            dateAdapter="AdapterDayjs",
+            children=[
+                mui.TimePicker(
+                    views=["hours"],
+                    openTo="hours",
+                    value="12:00",
+                    onChange=lambda v: None,
+                    renderInput=lambda params: mui.TextField(**params),
+                )
+            ],
+        )
+
+# fallback hour
+hour = datetime.now().hour
 
 year = date.year
 month = date.month
@@ -92,16 +113,13 @@ day = date.day
 dayofweek = date.weekday()
 
 # ------------------------------------------------
-# FETCH LIVE AQI
+# FETCH AQI
 # ------------------------------------------------
 
 city_api = city.lower().replace(" ", "-")
 
 with st.spinner("Fetching live AQI..."):
     actual_aqi = get_current_aqi(city_api)
-
-if actual_aqi is None:
-    st.warning("⚠ Unable to fetch live AQI right now.")
 
 # ------------------------------------------------
 # UPDATE HISTORY
@@ -123,7 +141,7 @@ if actual_aqi is not None:
         df_hist.to_csv("aqi_history.csv", index=False)
 
 # ------------------------------------------------
-# BUILD LAG FEATURES
+# LAG FEATURES
 # ------------------------------------------------
 
 city_hist = df_hist[df_hist["City"] == city]
@@ -195,8 +213,6 @@ if predict_btn:
 
     prediction = model.predict(features)[0]
 
-    # AQI CATEGORY
-
     if prediction <= 50:
         category = "Good"
     elif prediction <= 100:
@@ -214,7 +230,7 @@ if predict_btn:
 
     col_left, col_right = st.columns([2,1])
 
-    # RESULT PANEL
+    # MAIN RESULT
 
     with col_left:
 
@@ -226,9 +242,6 @@ if predict_btn:
 
         st.progress(progress_value)
 
-        if actual_aqi is not None:
-            st.metric("Current AQI (Live)", actual_aqi)
-
     # SUMMARY CARD
 
     with col_right:
@@ -238,8 +251,6 @@ f"""
 **City:** {city}
 
 **Date:** {date}
-
-**Time:** {time_input}
 
 **Predicted AQI:** {round(prediction,2)}
 
