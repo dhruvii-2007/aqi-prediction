@@ -78,7 +78,9 @@ with col2:
     date = st.date_input("📅 Date")
 
 with col3:
-    hour = st.slider("⏰ Hour",0,23,12)
+    time_input = st.time_input("⏰ Time")
+
+hour = time_input.hour
 
 year = date.year
 month = date.month
@@ -91,8 +93,12 @@ dayofweek = date.weekday()
 
 actual_aqi = get_current_aqi(city)
 
+# show if API fails
+if actual_aqi is None:
+    st.warning("⚠ Unable to fetch live AQI right now.")
+
 # ------------------------------------------------
-# UPDATE HISTORY (NO DUPLICATES)
+# UPDATE HISTORY
 # ------------------------------------------------
 
 if actual_aqi is not None:
@@ -205,9 +211,7 @@ if predict_btn:
 
     col_left, col_right = st.columns([2,1])
 
-    # ------------------------------------------------
-    # RESULT DISPLAY
-    # ------------------------------------------------
+    # RESULT PANEL
 
     with col_left:
 
@@ -219,7 +223,10 @@ if predict_btn:
 
         st.progress(progress_value)
 
-        st.metric("Current AQI (Live)", actual_aqi)
+        if actual_aqi is not None:
+            st.metric("Current AQI (Live)", actual_aqi)
+
+    # SUMMARY CARD
 
     with col_right:
 
@@ -229,7 +236,7 @@ f"""
 
 **Date:** {date}
 
-**Hour:** {hour}:00
+**Time:** {time_input}
 
 **Predicted AQI:** {round(prediction,2)}
 
@@ -238,13 +245,3 @@ f"""
 **Category:** {category}
 """
         )
-
-# ------------------------------------------------
-# HISTORY TABLE
-# ------------------------------------------------
-
-st.divider()
-
-st.subheader("Recent AQI History")
-
-st.dataframe(df_hist.tail(10))
