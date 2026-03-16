@@ -5,6 +5,7 @@ import joblib
 import requests
 import os
 from datetime import datetime
+from streamlit_timepicker import st_timepicker
 
 # ------------------------------------------------
 # PAGE CONFIG
@@ -20,7 +21,7 @@ st.set_page_config(
 # CONFIG
 # ------------------------------------------------
 
-API_KEY = "YOUR_API_KEY"
+API_KEY = "06f7899efea26f9023918642e26799c5969ea9c6"
 
 model = joblib.load("aqi_xgboost_model.pkl")
 city_encoder = joblib.load("city_encoder.pkl")
@@ -45,16 +46,21 @@ def get_current_aqi(city):
     url = f"https://api.waqi.info/feed/{city}/?token={API_KEY}"
 
     try:
-        r = requests.get(url)
+        r = requests.get(url, timeout=10)
+
+        if r.status_code != 200:
+            return None
+
         data = r.json()
 
-        if data["status"] == "ok":
+        if data.get("status") == "ok":
             return data["data"]["aqi"]
-        else:
-            return None
+
+        return None
 
     except:
         return None
+
 
 # ------------------------------------------------
 # HEADER
@@ -78,9 +84,8 @@ with col2:
     date = st.date_input("📅 Date")
 
 with col3:
-    time_input = st.time_input("⏰ Time")
-
-hour = time_input.hour
+    time_input = st_timepicker("⏰ Time", value="12:00")
+    hour = int(time_input.split(":")[0])
 
 year = date.year
 month = date.month
@@ -88,12 +93,14 @@ day = date.day
 dayofweek = date.weekday()
 
 # ------------------------------------------------
-# FETCH REAL AQI
+# FETCH LIVE AQI
 # ------------------------------------------------
 
-actual_aqi = get_current_aqi(city)
+city_api = city.lower().replace(" ", "-")
 
-# show if API fails
+with st.spinner("Fetching live AQI..."):
+    actual_aqi = get_current_aqi(city_api)
+
 if actual_aqi is None:
     st.warning("⚠ Unable to fetch live AQI right now.")
 
@@ -114,7 +121,6 @@ if actual_aqi is not None:
         }
 
         df_hist = pd.concat([df_hist, pd.DataFrame([new_row])])
-
         df_hist.to_csv("aqi_history.csv", index=False)
 
 # ------------------------------------------------
@@ -190,9 +196,7 @@ if predict_btn:
 
     prediction = model.predict(features)[0]
 
-    # ------------------------------------------------
     # AQI CATEGORY
-    # ------------------------------------------------
 
     if prediction <= 50:
         category = "Good"
@@ -219,7 +223,7 @@ if predict_btn:
 
         st.markdown(f"# {prediction:.2f}")
 
-        st.markdown(f"### 🔴 {category}")
+        st.markdown(f"### {category}")
 
         st.progress(progress_value)
 
