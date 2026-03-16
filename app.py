@@ -1,7 +1,9 @@
 import streamlit as st
+import pandas as pd
 import numpy as np
 import joblib
 import requests
+from datetime import datetime
 
 # ------------------------------------------------
 # PAGE CONFIG
@@ -58,22 +60,22 @@ st.divider()
 # INPUT SECTION
 # ------------------------------------------------
 
-with st.container():
+col1, col2, col3 = st.columns(3)
 
-    col1, col2, col3 = st.columns(3)
+with col1:
+    city = st.selectbox("City", cities)
 
-    with col1:
-        city = st.selectbox("City", cities)
+with col2:
+    date = st.date_input("Date")
 
-    with col2:
-        date = st.date_input("Date")
+with col3:
+    time = st.time_input("Time")
+    hour = time.hour
 
-    with col3:
-        time = st.time_input("Time")
-        hour = time.hour
 
-# spacing so dropdown opens downward
-st.markdown("<br><br>", unsafe_allow_html=True)
+# 🔽 ADD SPACE SO DROPDOWN OPENS DOWNWARD
+st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
+
 
 year = date.year
 month = date.month
@@ -91,10 +93,10 @@ state_enc = 0
 # PREDICT BUTTON
 # ------------------------------------------------
 
-predict = st.button("🚀 Predict AQI", use_container_width=True)
+predict = st.button("🚀 Predict AQI")
 
 # ------------------------------------------------
-# AQI CATEGORY
+# AQI CATEGORY FUNCTION
 # ------------------------------------------------
 
 def aqi_category(aqi):
@@ -128,17 +130,9 @@ if predict:
         actual_aqi = 150
         st.warning("Live AQI unavailable. Using fallback value.")
 
-    # ------------------------------------------------
-    # LAG FEATURES
-    # ------------------------------------------------
-
     AQI_lag_1 = actual_aqi
     AQI_lag_24 = actual_aqi
     AQI_roll_24 = actual_aqi
-
-    # ------------------------------------------------
-    # CYCLICAL FEATURES
-    # ------------------------------------------------
 
     hour_sin = np.sin(2*np.pi*hour/24)
     hour_cos = np.cos(2*np.pi*hour/24)
@@ -148,10 +142,6 @@ if predict:
 
     dow_sin = np.sin(2*np.pi*dayofweek/7)
     dow_cos = np.cos(2*np.pi*dayofweek/7)
-
-    # ------------------------------------------------
-    # FEATURE VECTOR
-    # ------------------------------------------------
 
     features = [[
         state_enc,
@@ -180,26 +170,18 @@ if predict:
 
     colA, colB = st.columns([2,1])
 
-    # ------------------------------------------------
-    # MAIN AQI PANEL
-    # ------------------------------------------------
-
     with colA:
 
         st.markdown("### Predicted AQI")
 
         st.markdown(
-            f"<h1 style='font-size:100px'>{round(prediction)}</h1>",
+            f"<h1 style='font-size:90px'>{round(prediction)}</h1>",
             unsafe_allow_html=True
         )
 
         st.markdown(f"### {emoji} {category}")
 
         st.progress(progress_value)
-
-    # ------------------------------------------------
-    # SUMMARY CARD
-    # ------------------------------------------------
 
     with colB:
 
