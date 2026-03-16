@@ -5,14 +5,13 @@ import joblib
 import requests
 import os
 from datetime import datetime
-from streamlit_elements import elements, mui
 
 # ------------------------------------------------
 # PAGE CONFIG
 # ------------------------------------------------
 
 st.set_page_config(
-    page_title="Air Quality Index Prediction Dashboard",
+    page_title="AQI Prediction Dashboard",
     page_icon="🌍",
     layout="wide"
 )
@@ -27,15 +26,6 @@ model = joblib.load("aqi_xgboost_model.pkl")
 city_encoder = joblib.load("city_encoder.pkl")
 
 cities = sorted(list(city_encoder.classes_))
-
-# ------------------------------------------------
-# LOAD HISTORY
-# ------------------------------------------------
-
-if os.path.exists("aqi_history.csv"):
-    df_hist = pd.read_csv("aqi_history.csv")
-else:
-    df_hist = pd.DataFrame(columns=["City","Datetime","AQI"])
 
 # ------------------------------------------------
 # AQI API
@@ -62,50 +52,26 @@ def get_current_aqi(city):
 # HEADER
 # ------------------------------------------------
 
-st.title("🌍 Air Quality Index Prediction Dashboard")
-st.caption("Predict AQI using AI with real-time pollution data")
+st.title("🌍 Air Quality Prediction Dashboard")
+st.caption("AI powered Air Quality forecasting")
 
 st.divider()
 
 # ------------------------------------------------
-# INPUTS
+# INPUT SECTION
 # ------------------------------------------------
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    city = st.selectbox("📍 City", cities)
+    city = st.selectbox("City", cities)
 
 with col2:
-    date = st.date_input("📅 Date")
-
-# ------------------------------------------------
-# CIRCULAR CLOCK PICKER
-# ------------------------------------------------
-
-hour = 12
+    date = st.date_input("Date")
 
 with col3:
-
-    st.write("⏰ Select Time")
-
-    with elements("clock"):
-
-        mui.LocalizationProvider(
-            dateAdapter="AdapterDayjs",
-            children=[
-                mui.TimePicker(
-                    views=["hours"],
-                    openTo="hours",
-                    value="12:00",
-                    onChange=lambda v: None,
-                    renderInput=lambda params: mui.TextField(**params),
-                )
-            ],
-        )
-
-# fallback hour
-hour = datetime.now().hour
+    time = st.time_input("Time")
+    hour = time.hour
 
 year = date.year
 month = date.month
@@ -113,7 +79,7 @@ day = date.day
 dayofweek = date.weekday()
 
 # ------------------------------------------------
-# FETCH AQI
+# FETCH LIVE AQI
 # ------------------------------------------------
 
 city_api = city.lower().replace(" ", "-")
@@ -122,43 +88,14 @@ with st.spinner("Fetching live AQI..."):
     actual_aqi = get_current_aqi(city_api)
 
 # ------------------------------------------------
-# UPDATE HISTORY
+# BUILD LAG FEATURES
 # ------------------------------------------------
 
-if actual_aqi is not None:
+fallback = actual_aqi if actual_aqi is not None else 150
 
-    now = datetime.now()
-
-    if len(df_hist) == 0 or df_hist.iloc[-1]["AQI"] != actual_aqi:
-
-        new_row = {
-            "City": city,
-            "Datetime": now,
-            "AQI": actual_aqi
-        }
-
-        df_hist = pd.concat([df_hist, pd.DataFrame([new_row])])
-        df_hist.to_csv("aqi_history.csv", index=False)
-
-# ------------------------------------------------
-# LAG FEATURES
-# ------------------------------------------------
-
-city_hist = df_hist[df_hist["City"] == city]
-
-if len(city_hist) > 24:
-
-    AQI_lag_1 = city_hist["AQI"].iloc[-1]
-    AQI_lag_24 = city_hist["AQI"].iloc[-24]
-    AQI_roll_24 = city_hist["AQI"].iloc[-24:].mean()
-
-else:
-
-    fallback = actual_aqi if actual_aqi is not None else 150
-
-    AQI_lag_1 = fallback
-    AQI_lag_24 = fallback
-    AQI_roll_24 = fallback
+AQI_lag_1 = fallback
+AQI_lag_24 = fallback
+AQI_roll_24 = fallback
 
 # ------------------------------------------------
 # CYCLICAL FEATURES
@@ -184,13 +121,33 @@ state_enc = 0
 # PREDICT BUTTON
 # ------------------------------------------------
 
-predict_btn = st.button("🚀 Predict AQI")
+predict = st.button("Predict AQI")
+
+# ------------------------------------------------
+# AQI CATEGORY FUNCTION
+# ------------------------------------------------
+
+def aqi_category(aqi):
+
+    if aqi <= 50:
+        return "Good", "🟢"
+    elif aqi <= 100:
+        return "Satisfactory", "🟡"
+    elif aqi <= 200:
+        return "Moderate", "🟠"
+    elif aqi <= 300:
+        return "Poor", "🔴"
+    elif aqi <= 400:
+        return "Very Poor", "🟣"
+    else:
+        return "Severe", "⚫"
+
 
 # ------------------------------------------------
 # PREDICTION
 # ------------------------------------------------
 
-if predict_btn:
+if predict:
 
     features = [[
         state_enc,
@@ -213,49 +170,47 @@ if predict_btn:
 
     prediction = model.predict(features)[0]
 
-    if prediction <= 50:
-        category = "Good"
-    elif prediction <= 100:
-        category = "Satisfactory"
-    elif prediction <= 200:
-        category = "Moderate"
-    elif prediction <= 300:
-        category = "Poor"
-    elif prediction <= 400:
-        category = "Very Poor"
-    else:
-        category = "Severe"
+    category, emoji = aqi_category(prediction)
 
-    progress_value = float(min(prediction / 500, 1))
+    progress_value = int(min(prediction,500))
 
-    col_left, col_right = st.columns([2,1])
+    colA, colB = st.columns([2,1])
 
-    # MAIN RESULT
+    # -------------------------------
+    # MAIN AQI PANEL
+    # -------------------------------
 
-    with col_left:
+    with colA:
 
-        st.subheader("Predicted AQI")
+        st.markdown("### Predicted AQI")
 
-        st.markdown(f"# {prediction:.2f}")
+        st.markdown(
+            f"<h1 style='font-size:80px'>{round(prediction)}</h1>",
+            unsafe_allow_html=True
+        )
 
-        st.markdown(f"### {category}")
+        st.markdown(f"### {emoji} {category}")
 
         st.progress(progress_value)
 
+    # -------------------------------
     # SUMMARY CARD
+    # -------------------------------
 
-    with col_right:
+    with colB:
 
-        st.info(
-f"""
-**City:** {city}
+        st.markdown("### Prediction Summary")
 
-**Date:** {date}
+        st.info(f"""
+City: **{city}**
 
-**Predicted AQI:** {round(prediction,2)}
+Date: **{date}**
 
-**Current AQI:** {actual_aqi}
+Time: **{time}**
 
-**Category:** {category}
-"""
-        )
+Predicted AQI: **{round(prediction)}**
+
+Current AQI: **{actual_aqi}**
+
+Category: **{category}**
+""")
