@@ -1,44 +1,123 @@
 import streamlit as st
-import numpy as np
 import pandas as pd
+import numpy as np
 import joblib
+import requests
+import os
+from datetime import datetime
 
-# Load model and data
-model = joblib.load("aqi_xgboost_model.pkl")
-df = pd.read_csv("aqi_history.csv")
+# -----------------------------
+# CONFIG
+# -----------------------------
 
-st.title("🌫️ AQI Prediction App")
+API_KEY = "YOUR_AQICN_API_KEY"
 
-# Dropdowns
-states = df["State"].unique()
-state = st.selectbox("Select State", states)
+# load model
+model = joblib.load("aqi_xgb_model.pkl")
 
-cities = df[df["State"] == state]["City"].unique()
+# -----------------------------
+# LOAD HISTORY
+# -----------------------------
+
+if os.path.exists("aqi_history.csv"):
+    df_hist = pd.read_csv("aqi_history.csv")
+else:
+    df_hist = pd.DataFrame(columns=["City","Datetime","AQI"])
+
+# -----------------------------
+# AQI API FUNCTION
+# -----------------------------
+
+def get_current_aqi(city):
+
+    url = f"https://api.waqi.info/feed/{city}/?token={API_KEY}"
+
+    try:
+        r = requests.get(url)
+        data = r.json()
+
+        if data["status"] == "ok":
+            return data["data"]["aqi"]
+        else:
+            return None
+
+    except:
+        return None
+
+# -----------------------------
+# UI
+# -----------------------------
+
+st.title("🌫 AI AQI Prediction")
+
+st.write("Predict air quality using AI + real-time data")
+
+cities = [
+"delhi",
+"ahmedabad",
+"mumbai",
+"bangalore",
+"kolkata",
+"chennai",
+"hyderabad",
+"pune"
+]
+
 city = st.selectbox("Select City", cities)
 
 date = st.date_input("Select Date")
-hour = st.slider("Hour", 0, 23, 12)
 
-# Convert date
+hour = st.slider("Hour",0,23,12)
+
 year = date.year
 month = date.month
 day = date.day
 dayofweek = date.weekday()
 
-# Get city encoding
-city_enc = df[df["City"] == city]["city_enc"].iloc[0]
-state_enc = df[df["City"] == city]["state_enc"].iloc[0]
+# -----------------------------
+# FETCH REAL AQI
+# -----------------------------
 
-# Get latest AQI values for city
-city_data = df[df["City"] == city].sort_values(
-    ["year","month","day","hour"]
-)
+actual_aqi = get_current_aqi(city)
 
-AQI_lag_1 = city_data["AQI"].iloc[-1]
-AQI_lag_24 = city_data["AQI"].iloc[-24]
-AQI_roll_24 = city_data["AQI"].iloc[-24:].mean()
+# -----------------------------
+# UPDATE HISTORY
+# -----------------------------
 
-# Cyclical features
+if actual_aqi is not None:
+
+    new_row = {
+        "City":city,
+        "Datetime":datetime.now(),
+        "AQI":actual_aqi
+    }
+
+    df_hist = pd.concat([df_hist,pd.DataFrame([new_row])])
+
+    df_hist.to_csv("aqi_history.csv",index=False)
+
+# -----------------------------
+# BUILD LAG FEATURES
+# -----------------------------
+
+city_hist = df_hist[df_hist["City"]==city]
+
+if len(city_hist) > 24:
+
+    AQI_lag_1 = city_hist["AQI"].iloc[-1]
+    AQI_lag_24 = city_hist["AQI"].iloc[-24]
+    AQI_roll_24 = city_hist["AQI"].iloc[-24:].mean()
+
+else:
+
+    AQI_lag_1 = actual_aqi
+    AQI_lag_24 = actual_aqi
+    AQI_roll_24 = actual_aqi
+
+# -----------------------------
+# CYCLICAL FEATURES
+# -----------------------------
+
 hour_sin = np.sin(2*np.pi*hour/24)
 hour_cos = np.cos(2*np.pi*hour/24)
 
@@ -48,7 +127,14 @@ month_cos = np.cos(2*np.pi*month/12)
 dow_sin = np.sin(2*np.pi*dayofweek/7)
 dow_cos = np.cos(2*np.pi*dayofweek/7)
 
-# Prediction
+# placeholder encodings (example)
+state_enc = 0
+city_enc = cities.index(city)
+
+# -----------------------------
+# PREDICT BUTTON
+# -----------------------------
+
 if st.button("Predict AQI"):
 
     features = [[
@@ -72,20 +158,34 @@ if st.button("Predict AQI"):
 
     prediction = model.predict(features)[0]
 
-    st.success(f"Predicted AQI: {prediction:.2f}")
+    st.subheader("Results")
 
-    # AQI category
+    st.metric("Predicted AQI",round(prediction,2))
+    st.metric("Current AQI",actual_aqi)
+
+# -----------------------------
+# AQI CATEGORY
+# -----------------------------
+
     if prediction <= 50:
-        category = "Good"
+        cat = "Good"
     elif prediction <= 100:
-        category = "Satisfactory"
+        cat = "Satisfactory"
     elif prediction <= 200:
-        category = "Moderate"
+        cat = "Moderate"
     elif prediction <= 300:
-        category = "Poor"
+        cat = "Poor"
     elif prediction <= 400:
-        category = "Very Poor"
+        cat = "Very Poor"
     else:
-        category = "Severe"
+        cat = "Severe"
 
-    st.write("AQI Category:", category)
+    st.write("Category:",cat)
+
+# -----------------------------
+# SHOW HISTORY
+# -----------------------------
+
+st.subheader("Recent AQI Data")
+
+st.dataframe(df_hist.tail(10))
