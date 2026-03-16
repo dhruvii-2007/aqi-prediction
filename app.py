@@ -13,7 +13,7 @@ from datetime import datetime
 API_KEY = "06f7899efea26f9023918642e26799c5969ea9c6"
 
 # load model
-model = joblib.load("aqi_xgb_model.pkl")
+model = joblib.load("aqi_xgboost_model.pkl")
 
 # -----------------------------
 # LOAD HISTORY
