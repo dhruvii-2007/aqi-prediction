@@ -4,7 +4,7 @@ import pandas as pd
 import joblib
 
 # Load model and data
-model = joblib.load("aqi_xgb_model.pkl")
+model = joblib.load("aqi_xgboost_model.pkl")
 df = pd.read_csv("aqi_history.csv")
 
 st.title("🌫️ AQI Prediction App")
