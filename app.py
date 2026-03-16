@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 import joblib
 import requests
-import os
 from datetime import datetime
 
 # ------------------------------------------------
@@ -36,7 +35,7 @@ def get_current_aqi(city):
     url = f"https://api.waqi.info/feed/{city}/?token={API_KEY}"
 
     try:
-        r = requests.get(url, timeout=10)
+        r = requests.get(url, timeout=8)
         data = r.json()
 
         if data.get("status") == "ok":
@@ -79,38 +78,6 @@ day = date.day
 dayofweek = date.weekday()
 
 # ------------------------------------------------
-# FETCH LIVE AQI
-# ------------------------------------------------
-
-city_api = city.lower().replace(" ", "-")
-
-with st.spinner("Fetching live AQI..."):
-    actual_aqi = get_current_aqi(city_api)
-
-# ------------------------------------------------
-# BUILD LAG FEATURES
-# ------------------------------------------------
-
-fallback = actual_aqi if actual_aqi is not None else 150
-
-AQI_lag_1 = fallback
-AQI_lag_24 = fallback
-AQI_roll_24 = fallback
-
-# ------------------------------------------------
-# CYCLICAL FEATURES
-# ------------------------------------------------
-
-hour_sin = np.sin(2*np.pi*hour/24)
-hour_cos = np.cos(2*np.pi*hour/24)
-
-month_sin = np.sin(2*np.pi*month/12)
-month_cos = np.cos(2*np.pi*month/12)
-
-dow_sin = np.sin(2*np.pi*dayofweek/7)
-dow_cos = np.cos(2*np.pi*dayofweek/7)
-
-# ------------------------------------------------
 # ENCODING
 # ------------------------------------------------
 
@@ -121,7 +88,7 @@ state_enc = 0
 # PREDICT BUTTON
 # ------------------------------------------------
 
-predict = st.button("Predict AQI")
+predict = st.button("🚀 Predict AQI")
 
 # ------------------------------------------------
 # AQI CATEGORY FUNCTION
@@ -149,6 +116,44 @@ def aqi_category(aqi):
 
 if predict:
 
+    # ---------------------------------------------
+    # Fetch live AQI only when predicting
+    # ---------------------------------------------
+
+    city_api = city.lower().replace(" ", "-")
+
+    with st.spinner("Fetching live AQI..."):
+        actual_aqi = get_current_aqi(city_api)
+
+    if actual_aqi is None:
+        actual_aqi = 150
+        st.warning("Live AQI unavailable. Using fallback value.")
+
+    # ------------------------------------------------
+    # BUILD LAG FEATURES
+    # ------------------------------------------------
+
+    AQI_lag_1 = actual_aqi
+    AQI_lag_24 = actual_aqi
+    AQI_roll_24 = actual_aqi
+
+    # ------------------------------------------------
+    # CYCLICAL FEATURES
+    # ------------------------------------------------
+
+    hour_sin = np.sin(2*np.pi*hour/24)
+    hour_cos = np.cos(2*np.pi*hour/24)
+
+    month_sin = np.sin(2*np.pi*month/12)
+    month_cos = np.cos(2*np.pi*month/12)
+
+    dow_sin = np.sin(2*np.pi*dayofweek/7)
+    dow_cos = np.cos(2*np.pi*dayofweek/7)
+
+    # ------------------------------------------------
+    # FEATURE VECTOR
+    # ------------------------------------------------
+
     features = [[
         state_enc,
         city_enc,
@@ -172,7 +177,7 @@ if predict:
 
     category, emoji = aqi_category(prediction)
 
-    progress_value = int(min(prediction,500))
+    progress_value = int(min(prediction, 500))
 
     colA, colB = st.columns([2,1])
 
@@ -185,7 +190,7 @@ if predict:
         st.markdown("### Predicted AQI")
 
         st.markdown(
-            f"<h1 style='font-size:80px'>{round(prediction)}</h1>",
+            f"<h1 style='font-size:90px'>{round(prediction)}</h1>",
             unsafe_allow_html=True
         )
 
